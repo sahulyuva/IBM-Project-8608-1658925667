@@ -1,0 +1,394 @@
+{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset1 Segoe UI Symbol;}}
+{\*\generator Riched20 10.0.16299}\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\f0\fs22\lang9 # Ignore  the warnings\par
+import warnings\par
+warnings.filterwarnings('always')\par
+warnings.filterwarnings('ignore')\par
+\par
+# data visualisation and manipulation\par
+import numpy as np\par
+import pandas as pd\par
+import matplotlib.pyplot as plt\par
+from matplotlib import style\par
+import seaborn as sns\par
+ \par
+#configure\par
+# sets matplotlib to inline and displays graphs below the corressponding cell.\par
+%matplotlib inline  \par
+style.use('fivethirtyeight')\par
+sns.set(style='whitegrid',color_codes=True)\par
+\par
+#model selection\par
+from sklearn.model_selection import train_test_split\par
+from sklearn.model_selection import KFold\par
+from sklearn.metrics import accuracy_score,precision_score,recall_score,confusion_matrix,roc_curve,roc_auc_score\par
+from sklearn.model_selection import GridSearchCV\par
+from sklearn.preprocessing import LabelEncoder\par
+\par
+#preprocess.\par
+from keras.preprocessing.image import ImageDataGenerator\par
+\par
+#dl libraraies\par
+from keras import backend as K\par
+from keras.models import Sequential\par
+from keras.layers import Dense\par
+from keras.optimizers import Adam,SGD,Adagrad,Adadelta,RMSprop\par
+from keras.utils import to_categorical\par
+\par
+# specifically for cnn\par
+from keras.layers import Dropout, Flatten,Activation\par
+from keras.layers import Conv2D, MaxPooling2D, BatchNormalization\par
+ \par
+import tensorflow as tf\par
+import random as rn\par
+\par
+# specifically for manipulating zipped images and getting numpy arrays of pixel values of images.\par
+import cv2                  \par
+import numpy as np  \par
+from tqdm import tqdm\par
+import os                   \par
+from random import shuffle  \par
+from zipfile import ZipFile\par
+from PIL import Image\par
+Using TensorFlow backend.\par
+\par
+2 ) Preparing the Data\par
+2.1) Making the functions to get the training and validation set from the Images\par
+X=[]\par
+Z=[]\par
+IMG_SIZE=150\par
+FLOWER_DAISY_DIR='../input/flowers/flowers/daisy'\par
+FLOWER_SUNFLOWER_DIR='../input/flowers/flowers/sunflower'\par
+FLOWER_TULIP_DIR='../input/flowers/flowers/tulip'\par
+FLOWER_DANDI_DIR='../input/flowers/flowers/dandelion'\par
+FLOWER_ROSE_DIR='../input/flowers/flowers/rose'\par
+def assign_label(img,flower_type):\par
+    return flower_type\par
+    \par
+def make_train_data(flower_type,DIR):\par
+    for img in tqdm(os.listdir(DIR)):\par
+        label=assign_label(img,flower_type)\par
+        path = os.path.join(DIR,img)\par
+        img = cv2.imread(path,cv2.IMREAD_COLOR)\par
+        img = cv2.resize(img, (IMG_SIZE,IMG_SIZE))\par
+        \par
+        X.append(np.array(img))\par
+        Z.append(str(label))\par
+        \par
+        \par
+        \par
+make_train_data('Daisy',FLOWER_DAISY_DIR)\par
+print(len(X))\par
+100%\f1\u9608?\u9608?\u9608?\f0 | 769/769 [00:03<00:00, 215.70it/s]\par
+769\par
+make_train_data('Sunflower',FLOWER_SUNFLOWER_DIR)\par
+print(len(X))\par
+100%|| 734/734 [00:03<00:00, 206.81it/s]\par
+1503\par
+make_train_data('Tulip',FLOWER_TULIP_DIR)\par
+print(len(X))\par
+100%|\f1\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\f0 | 984/984 [00:04<00:00, 224.01it/s]\par
+2487\par
+make_train_data('Dandelion',FLOWER_DANDI_DIR)\par
+print(len(X))\par
+  9%|\f1\u9609?\f0          | 97/1055 [00:00<00:04, 235.89it/s]\par
+---------------------------------------------------------------------------\par
+error                                     Traceback (most recent call last)\par
+<ipython-input-9-95c78ead0c98> in <module>\par
+----> 1 make_train_data('Dandelion',FLOWER_DANDI_DIR)\par
+      2 print(len(X))\par
+\par
+<ipython-input-5-001b1f747236> in make_train_data(flower_type, DIR)\par
+      4         path = os.path.join(DIR,img)\par
+      5         img = cv2.imread(path,cv2.IMREAD_COLOR)\par
+----> 6         img = cv2.resize(img, (IMG_SIZE,IMG_SIZE))\par
+      7 \par
+      8         X.append(np.array(img))\par
+\par
+error: OpenCV(3.4.3) /io/opencv/modules/imgproc/src/resize.cpp:4044: error: (-215:Assertion failed) !ssize.empty() in function 'resize'\par
+make_train_data('Rose',FLOWER_ROSE_DIR)\par
+print(len(X))\par
+100%|\f1\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\u9608?\f0 | 784/784 [00:03<00:00, 235.31it/s]\par
+3386\par
+2.2 ) Visualizing some Random Images\par
+fig,ax=plt.subplots(5,2)\par
+fig.set_size_inches(15,15)\par
+for i in range(5):\par
+    for j in range (2):\par
+        l=rn.randint(0,len(Z))\par
+        ax[i,j].imshow(X[l])\par
+        ax[i,j].set_title('Flower: '+Z[l])\par
+        \par
+plt.tight_layout()\par
+        \par
+\par
+2.3 ) Label Encoding the Y array (i.e. Daisy->0, Rose->1 etc...) & then One Hot Encoding\par
+le=LabelEncoder()\par
+Y=le.fit_transform(Z)\par
+Y=to_categorical(Y,5)\par
+X=np.array(X)\par
+X=X/255\par
+2.4 ) Splitting into Training and Validation Sets\par
+x_train,x_test,y_train,y_test=train_test_split(X,Y,test_size=0.25,random_state=42)\par
+2.5 ) Setting the Random Seeds\par
+np.random.seed(42)\par
+rn.seed(42)\par
+tf.set_random_seed(42)\par
+ \par
+\par
+3 ) Modelling\par
+3.1 ) Building the ConvNet Model\par
+# # modelling starts using a CNN.\par
+\par
+model = Sequential()\par
+model.add(Conv2D(filters = 32, kernel_size = (5,5),padding = 'Same',activation ='relu', input_shape = (150,150,3)))\par
+model.add(MaxPooling2D(pool_size=(2,2)))\par
+\par
+\par
+model.add(Conv2D(filters = 64, kernel_size = (3,3),padding = 'Same',activation ='relu'))\par
+model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2)))\par
+ \par
+\par
+model.add(Conv2D(filters =96, kernel_size = (3,3),padding = 'Same',activation ='relu'))\par
+model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2)))\par
+\par
+model.add(Conv2D(filters = 96, kernel_size = (3,3),padding = 'Same',activation ='relu'))\par
+model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2)))\par
+\par
+model.add(Flatten())\par
+model.add(Dense(512))\par
+model.add(Activation('relu'))\par
+model.add(Dense(5, activation = "softmax"))\par
+3.2 ) Using a LR Annealer\par
+batch_size=128\par
+epochs=50\par
+\par
+from keras.callbacks import ReduceLROnPlateau\par
+red_lr= ReduceLROnPlateau(monitor='val_acc',patience=3,verbose=1,factor=0.1)\par
+3.3 ) Data Augmentation to prevent Overfitting\par
+datagen = ImageDataGenerator(\par
+        featurewise_center=False,  # set input mean to 0 over the dataset\par
+        samplewise_center=False,  # set each sample mean to 0\par
+        featurewise_std_normalization=False,  # divide inputs by std of the dataset\par
+        samplewise_std_normalization=False,  # divide each input by its std\par
+        zca_whitening=False,  # apply ZCA whitening\par
+        rotation_range=10,  # randomly rotate images in the range (degrees, 0 to 180)\par
+        zoom_range = 0.1, # Randomly zoom image \par
+        width_shift_range=0.2,  # randomly shift images horizontally (fraction of total width)\par
+        height_shift_range=0.2,  # randomly shift images vertically (fraction of total height)\par
+        horizontal_flip=True,  # randomly flip images\par
+        vertical_flip=False)  # randomly flip images\par
+\par
+\par
+datagen.fit(x_train)\par
+3.4 ) Compiling the Keras Model & Summary\par
+model.compile(optimizer=Adam(lr=0.001),loss='categorical_crossentropy',metrics=['accuracy'])\par
+model.summary()\par
+_________________________________________________________________\par
+Layer (type)                 Output Shape              Param #   \par
+=================================================================\par
+conv2d_1 (Conv2D)            (None, 150, 150, 32)      2432      \par
+_________________________________________________________________\par
+max_pooling2d_1 (MaxPooling2 (None, 75, 75, 32)        0         \par
+_________________________________________________________________\par
+conv2d_2 (Conv2D)            (None, 75, 75, 64)        18496     \par
+_________________________________________________________________\par
+max_pooling2d_2 (MaxPooling2 (None, 37, 37, 64)        0         \par
+_________________________________________________________________\par
+conv2d_3 (Conv2D)            (None, 37, 37, 96)        55392     \par
+_________________________________________________________________\par
+max_pooling2d_3 (MaxPooling2 (None, 18, 18, 96)        0         \par
+_________________________________________________________________\par
+conv2d_4 (Conv2D)            (None, 18, 18, 96)        83040     \par
+_________________________________________________________________\par
+max_pooling2d_4 (MaxPooling2 (None, 9, 9, 96)          0         \par
+_________________________________________________________________\par
+flatten_1 (Flatten)          (None, 7776)              0         \par
+_________________________________________________________________\par
+dense_1 (Dense)              (None, 512)               3981824   \par
+_________________________________________________________________\par
+activation_1 (Activation)    (None, 512)               0         \par
+_________________________________________________________________\par
+dense_2 (Dense)              (None, 5)                 2565      \par
+=================================================================\par
+Total params: 4,143,749\par
+Trainable params: 4,143,749\par
+Non-trainable params: 0\par
+_________________________________________________________________\par
+3.5 ) Fitting on the Training set and making predcitons on the Validation set\par
+History = model.fit_generator(datagen.flow(x_train,y_train, batch_size=batch_size),\par
+                              epochs = epochs, validation_data = (x_test,y_test),\par
+                              verbose = 1, steps_per_epoch=x_train.shape[0] // batch_size)\par
+# model.fit(x_train,y_train,epochs=epochs,batch_size=batch_size,validation_data = (x_test,y_test))\par
+Epoch 1/50\par
+19/19 [==============================] - 18s 947ms/step - loss: 1.3674 - acc: 0.3721 - val_loss: 1.0551 - val_acc: 0.5549\par
+Epoch 2/50\par
+19/19 [==============================] - 15s 768ms/step - loss: 1.1096 - acc: 0.5398 - val_loss: 1.0287 - val_acc: 0.5738\par
+Epoch 3/50\par
+19/19 [==============================] - 15s 770ms/step - loss: 1.0306 - acc: 0.5749 - val_loss: 0.8975 - val_acc: 0.6647\par
+Epoch 4/50\par
+19/19 [==============================] - 15s 779ms/step - loss: 0.9500 - acc: 0.6150 - val_loss: 1.0258 - val_acc: 0.5986\par
+Epoch 5/50\par
+19/19 [==============================] - 15s 771ms/step - loss: 0.9408 - acc: 0.6352 - val_loss: 0.8534 - val_acc: 0.6659\par
+Epoch 6/50\par
+19/19 [==============================] - 15s 773ms/step - loss: 0.8849 - acc: 0.6450 - val_loss: 0.8217 - val_acc: 0.6824\par
+Epoch 7/50\par
+19/19 [==============================] - 14s 757ms/step - loss: 0.8909 - acc: 0.6493 - val_loss: 0.8131 - val_acc: 0.6860\par
+Epoch 8/50\par
+19/19 [==============================] - 15s 765ms/step - loss: 0.8273 - acc: 0.6697 - val_loss: 0.7303 - val_acc: 0.7226\par
+Epoch 9/50\par
+19/19 [==============================] - 14s 758ms/step - loss: 0.8043 - acc: 0.6879 - val_loss: 0.7364 - val_acc: 0.7131\par
+Epoch 10/50\par
+19/19 [==============================] - 14s 762ms/step - loss: 0.8012 - acc: 0.6792 - val_loss: 0.6771 - val_acc: 0.7521\par
+Epoch 11/50\par
+19/19 [==============================] - 14s 761ms/step - loss: 0.8138 - acc: 0.6789 - val_loss: 0.7210 - val_acc: 0.7107\par
+Epoch 12/50\par
+19/19 [==============================] - 15s 765ms/step - loss: 0.7827 - acc: 0.6870 - val_loss: 0.7838 - val_acc: 0.6824\par
+Epoch 13/50\par
+19/19 [==============================] - 14s 761ms/step - loss: 0.8019 - acc: 0.6843 - val_loss: 0.7249 - val_acc: 0.7226\par
+Epoch 14/50\par
+19/19 [==============================] - 15s 766ms/step - loss: 0.7274 - acc: 0.7137 - val_loss: 0.6254 - val_acc: 0.7615\par
+Epoch 15/50\par
+19/19 [==============================] - 15s 764ms/step - loss: 0.6792 - acc: 0.7381 - val_loss: 0.6146 - val_acc: 0.7686\par
+Epoch 16/50\par
+19/19 [==============================] - 14s 758ms/step - loss: 0.6489 - acc: 0.7488 - val_loss: 0.6053 - val_acc: 0.7733\par
+Epoch 17/50\par
+19/19 [==============================] - 15s 765ms/step - loss: 0.6621 - acc: 0.7463 - val_loss: 0.6521 - val_acc: 0.7509\par
+Epoch 18/50\par
+19/19 [==============================] - 15s 787ms/step - loss: 0.6664 - acc: 0.7360 - val_loss: 0.6240 - val_acc: 0.7698\par
+Epoch 19/50\par
+19/19 [==============================] - 14s 757ms/step - loss: 0.6392 - acc: 0.7450 - val_loss: 0.6863 - val_acc: 0.7308\par
+Epoch 20/50\par
+19/19 [==============================] - 15s 767ms/step - loss: 0.6411 - acc: 0.7498 - val_loss: 0.6494 - val_acc: 0.7532\par
+Epoch 21/50\par
+19/19 [==============================] - 14s 759ms/step - loss: 0.6144 - acc: 0.7669 - val_loss: 0.5729 - val_acc: 0.7887\par
+Epoch 22/50\par
+19/19 [==============================] - 14s 759ms/step - loss: 0.6019 - acc: 0.7606 - val_loss: 0.6476 - val_acc: 0.7651\par
+Epoch 23/50\par
+19/19 [==============================] - 14s 756ms/step - loss: 0.5982 - acc: 0.7624 - val_loss: 0.6235 - val_acc: 0.7651\par
+Epoch 24/50\par
+19/19 [==============================] - 14s 759ms/step - loss: 0.5960 - acc: 0.7631 - val_loss: 0.6999 - val_acc: 0.7190\par
+Epoch 25/50\par
+19/19 [==============================] - 14s 757ms/step - loss: 0.6052 - acc: 0.7646 - val_loss: 0.6245 - val_acc: 0.7780\par
+Epoch 26/50\par
+19/19 [==============================] - 14s 763ms/step - loss: 0.5379 - acc: 0.7835 - val_loss: 0.5983 - val_acc: 0.7721\par
+Epoch 27/50\par
+19/19 [==============================] - 14s 751ms/step - loss: 0.5609 - acc: 0.7821 - val_loss: 0.6182 - val_acc: 0.7615\par
+Epoch 28/50\par
+19/19 [==============================] - 14s 756ms/step - loss: 0.5226 - acc: 0.7994 - val_loss: 0.5834 - val_acc: 0.7922\par
+Epoch 29/50\par
+19/19 [==============================] - 14s 751ms/step - loss: 0.5393 - acc: 0.7847 - val_loss: 0.6063 - val_acc: 0.7674\par
+Epoch 30/50\par
+19/19 [==============================] - 14s 742ms/step - loss: 0.5416 - acc: 0.7979 - val_loss: 0.5908 - val_acc: 0.7816\par
+Epoch 31/50\par
+19/19 [==============================] - 14s 739ms/step - loss: 0.5047 - acc: 0.8101 - val_loss: 0.5826 - val_acc: 0.7851\par
+Epoch 32/50\par
+19/19 [==============================] - 14s 741ms/step - loss: 0.4784 - acc: 0.8119 - val_loss: 0.6112 - val_acc: 0.7828\par
+Epoch 33/50\par
+19/19 [==============================] - 14s 745ms/step - loss: 0.4866 - acc: 0.8068 - val_loss: 0.6614 - val_acc: 0.7509\par
+Epoch 34/50\par
+19/19 [==============================] - 14s 751ms/step - loss: 0.5058 - acc: 0.8065 - val_loss: 0.5518 - val_acc: 0.7898\par
+Epoch 35/50\par
+19/19 [==============================] - 14s 741ms/step - loss: 0.4497 - acc: 0.8321 - val_loss: 0.5333 - val_acc: 0.8158\par
+Epoch 36/50\par
+19/19 [==============================] - 14s 742ms/step - loss: 0.4184 - acc: 0.8355 - val_loss: 0.5814 - val_acc: 0.7769\par
+Epoch 37/50\par
+19/19 [==============================] - 14s 737ms/step - loss: 0.3989 - acc: 0.8450 - val_loss: 0.6347 - val_acc: 0.7887\par
+Epoch 38/50\par
+19/19 [==============================] - 14s 744ms/step - loss: 0.4255 - acc: 0.8381 - val_loss: 0.6923 - val_acc: 0.7568\par
+Epoch 39/50\par
+19/19 [==============================] - 14s 762ms/step - loss: 0.4132 - acc: 0.8389 - val_loss: 0.6282 - val_acc: 0.7887\par
+Epoch 40/50\par
+19/19 [==============================] - 14s 756ms/step - loss: 0.4231 - acc: 0.8346 - val_loss: 0.5511 - val_acc: 0.8076\par
+Epoch 41/50\par
+19/19 [==============================] - 14s 747ms/step - loss: 0.4408 - acc: 0.8277 - val_loss: 0.5862 - val_acc: 0.7887\par
+Epoch 42/50\par
+19/19 [==============================] - 14s 738ms/step - loss: 0.3850 - acc: 0.8518 - val_loss: 0.6169 - val_acc: 0.7863\par
+Epoch 43/50\par
+19/19 [==============================] - 14s 736ms/step - loss: 0.3757 - acc: 0.8571 - val_loss: 0.5783 - val_acc: 0.7839\par
+Epoch 44/50\par
+19/19 [==============================] - 14s 730ms/step - loss: 0.3467 - acc: 0.8686 - val_loss: 0.6838 - val_acc: 0.7745\par
+Epoch 45/50\par
+19/19 [==============================] - 14s 735ms/step - loss: 0.3528 - acc: 0.8588 - val_loss: 0.5599 - val_acc: 0.8052\par
+Epoch 46/50\par
+19/19 [==============================] - 14s 745ms/step - loss: 0.3390 - acc: 0.8665 - val_loss: 0.7213 - val_acc: 0.7816\par
+Epoch 47/50\par
+19/19 [==============================] - 14s 737ms/step - loss: 0.3561 - acc: 0.8725 - val_loss: 0.5799 - val_acc: 0.8017\par
+Epoch 48/50\par
+19/19 [==============================] - 14s 747ms/step - loss: 0.3701 - acc: 0.8616 - val_loss: 0.6822 - val_acc: 0.7804\par
+Epoch 49/50\par
+19/19 [==============================] - 14s 740ms/step - loss: 0.3353 - acc: 0.8736 - val_loss: 0.5710 - val_acc: 0.8135\par
+Epoch 50/50\par
+19/19 [==============================] - 14s 745ms/step - loss: 0.3410 - acc: 0.8676 - val_loss: 0.6586 - val_acc: 0.7898\par
+ \par
+\par
+4 ) Evaluating the Model Performance\par
+plt.plot(History.history['loss'])\par
+plt.plot(History.history['val_loss'])\par
+plt.title('Model Loss')\par
+plt.ylabel('Loss')\par
+plt.xlabel('Epochs')\par
+plt.legend(['train', 'test'])\par
+plt.show()\par
+\par
+plt.plot(History.history['acc'])\par
+plt.plot(History.history['val_acc'])\par
+plt.title('Model Accuracy')\par
+plt.ylabel('Accuracy')\par
+plt.xlabel('Epochs')\par
+plt.legend(['train', 'test'])\par
+plt.show()\par
+\par
+\par
+5 ) Visualizing Predictons on the Validation Set\par
+# getting predictions on val set.\par
+pred=model.predict(x_test)\par
+pred_digits=np.argmax(pred,axis=1)\par
+# now storing some properly as well as misclassified indexes'.\par
+i=0\par
+prop_class=[]\par
+mis_class=[]\par
+\par
+for i in range(len(y_test)):\par
+    if(np.argmax(y_test[i])==pred_digits[i]):\par
+        prop_class.append(i)\par
+    if(len(prop_class)==8):\par
+        break\par
+\par
+i=0\par
+for i in range(len(y_test)):\par
+    if(not np.argmax(y_test[i])==pred_digits[i]):\par
+        mis_class.append(i)\par
+    if(len(mis_class)==8):\par
+        break\par
+CORRECTLY CLASSIFIED FLOWER IMAGES\par
+warnings.filterwarnings('always')\par
+warnings.filterwarnings('ignore')\par
+\par
+count=0\par
+fig,ax=plt.subplots(4,2)\par
+fig.set_size_inches(15,15)\par
+for i in range (4):\par
+    for j in range (2):\par
+        ax[i,j].imshow(x_test[prop_class[count]])\par
+        ax[i,j].set_title("Predicted Flower : "+str(le.inverse_transform([pred_digits[prop_class[count]]]))+"\\n"+"Actual Flower : "+str(le.inverse_transform(np.argmax([y_test[prop_class[count]]]))))\par
+        plt.tight_layout()\par
+        count+=1\par
+\par
+MISCLASSIFIED IMAGES OF FLOWERS\par
+warnings.filterwarnings('always')\par
+warnings.filterwarnings('ignore')\par
+\par
+count=0\par
+fig,ax=plt.subplots(4,2)\par
+fig.set_size_inches(15,15)\par
+for i in range (4):\par
+    for j in range (2):\par
+        ax[i,j].imshow(x_test[mis_class[count]])\par
+        ax[i,j].set_title("Predicted Flower : "+str(le.inverse_transform([pred_digits[mis_class[count]]]))+"\\n"+"Actual Flower : "+str(le.inverse_transform(np.argmax([y_test[mis_class[count]]]))))\par
+        plt.tight_layout()\par
+        count+=1\par
+\par
+THE END\par
+}
+ 
